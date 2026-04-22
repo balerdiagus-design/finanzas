@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanzas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+  .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; }
+  .metrics { display: flex; gap: 20px; flex-wrap: wrap; }
+  .metric { background: white; padding: 15px 25px; border-radius: 10px; min-width: 150px; }
+  .metric .label { font-size: 13px; color: #888; margin-bottom: 4px; }
+  .metric .value { font-size: 22px; font-weight: bold; }
+  .ingreso  { border-left: 4px solid #4caf50; }
+  .gastos   { border-left: 4px solid #f44336; }
+  .ahorro   { border-left: 4px solid #2196f3; }
+  .ahorro-neg { border-left: 4px solid #ff9800; }
+  select { padding: 8px 12px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 15px; }
+  canvas { max-width: 500px; display: block; margin: 20px auto; }
+  h2 { margin-bottom: 15px; }
+</style>
+</head>
+<body>
+
+<h2>Dashboard Finanzas</h2>
+<select id="monthSel"></select>
+<div class="metrics" id="metrics"></div>
+<canvas id="chart"></canvas>
+
+<script>
+// ----- REEMPLAZÁ ESTA URL POR LA DE TU GOOGLE SHEETS PUBLICADO -----
+// Archivo > Publicar en la web > Hoja "Movimientos" > CSV > Publicar
+const SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuy_abpjEQ8IPISj2Ql7h60TkYP7ZKL9Xg64q3eJiYmbj27GEHxhIPiEf37qv8gJV1AEcWcOuD8b34/pub?gid=150263067&single=true&output=csv";
+// ------------------------------------------------------------------
+
+let chart;
+
+// Limpia montos como "$2.300.000" o "-$18.300" → número
+function limpiarMonto(str) {
+  if (!str) return 0;
+  const n = Number(str.replace(/[^0-9\-]/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+
+// Parsea CSV respetando campos entre comillas
+function parsearCSV(texto) {
+  const lineas = texto.trim().split("\n");
+  return lineas.map(linea => {
+    const cols = [];
+    let actual = "";
+    let dentroComillas = false;
+    for (let i = 0; i < linea.length; i++) {
+      const c = linea[i];
+      if (c === '"') {
+        dentroComillas = !dentroComillas;
+      } else if (c === "," && !dentroComillas) {
+        cols.push(actual.trim());
+        actual = "";
+      } else {
+        actual += c;
+      }
+    }
+    cols.push(actual.trim());
+    return cols;
+  });
+}
+
+async function cargarDatos() {
+  try {
+    const res = await fetch(SHEETS_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const texto = await res.text();
+
+    const filas = parsearCSV(texto).slice(1); // saltar header
+    const periodos = {};
+
+    filas.forEach(cols => {
+      // Columnas: 0=timestamp, 1=descripcion, 2=categoria, 3=monto,
+      //           4=observaciones, 5=tipo, 6=monto_final, 7=fecha, 8=año_mes
+      if (cols.length < 9) return;
+
+      const categoria = cols[2];
+      const montoFinal = limpiarMonto(cols[6]);
+      const anoMes = cols[8]; // formato YYYYMM, ej: "202602"
+
+      if (!categoria || !anoMes || anoMes.length < 6) return;
+      if (montoFinal === 0 && !categoria) return;
+
+      const anio = anoMes.substring(0, 4);
+      const mesIdx = parseInt(anoMes.substring(4, 6), 10) - 1;
+      const mesNom = new Date(parseInt(anio), mesIdx, 1)
+        .toLocaleString("es-AR", { month: "short" });
+
+      if (!periodos[anoMes]) {
+        periodos[anoMes] = { label: mesNom + " " + anio, ingreso: 0, gastos: {} };
+      }
+
+      const valor = Math.abs(montoFinal);
+
+      if (categoria === "Ingreso") {
+        periodos[anoMes].ingreso += valor;
+      } else if (valor > 0) {
+        periodos[anoMes].gastos[categoria] =
+          (periodos[anoMes].gastos[categoria] || 0) + valor;
+      }
+    });
+
+    // Ordenar por clave YYYYMM
+    return Object.entries(periodos)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => v);
+
+  } catch (e) {
+    document.body.innerHTML = `<div class="card" style="color:red">
+      <b>Error cargando datos:</b> ${e.message}<br><br>
+      Asegurate de que el Google Sheets esté publicado en la web como CSV.<br>
+      (Archivo → Publicar en la web → CSV)
+    </div>`;
+    return [];
+  }
+}
+
+function colorear(n) {
+  const paleta = [
+    "#FF6384","#36A2EB","#FFCE56","#4BC0C0","#9966FF",
+    "#FF9F40","#C9CBCF","#7BC225","#E74C3C","#3498DB"
+  ];
+  return paleta[n % paleta.length];
+}
+
+async function init() {
+  const data = await cargarDatos();
+  if (data.length === 0) return;
+
+  const sel = document.getElementById("monthSel");
+  data.forEach((m, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+  sel.value = data.length - 1;
+
+  function render() {
+    const m = data[sel.value];
+    const totalGastos = Object.values(m.gastos).reduce((a, b) => a + b, 0);
+    const ahorro = m.ingreso - totalGastos;
+    const esNegativo = ahorro < 0;
+
+    document.getElementById("metrics").innerHTML = `
+      <div class="metric ingreso">
+        <div class="label">Ingresos</div>
+        <div class="value" style="color:#4caf50">$${m.ingreso.toLocaleString("es-AR")}</div>
+      </div>
+      <div class="metric gastos">
+        <div class="label">Gastos</div>
+        <div class="value" style="color:#f44336">$${totalGastos.toLocaleString("es-AR")}</div>
+      </div>
+      <div class="metric ${esNegativo ? "ahorro-neg" : "ahorro"}">
+        <div class="label">${esNegativo ? "Déficit" : "Ahorro"}</div>
+        <div class="value" style="color:${esNegativo ? "#ff9800" : "#2196f3"}">
+          $${Math.abs(ahorro).toLocaleString("es-AR")}
+        </div>
+      </div>
+    `;
+
+    if (chart) chart.destroy();
+
+    const labels = Object.keys(m.gastos);
+    const valores = Object.values(m.gastos);
+    const colores = labels.map((_, i) => colorear(i));
+
+    chart = new Chart(document.getElementById("chart"), {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{ data: valores, backgroundColor: colores }]
+      },
+      options: {
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const val = ctx.parsed;
+                const pct = ((val / totalGastos) * 100).toFixed(1);
+                return ` $${val.toLocaleString("es-AR")} (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  sel.addEventListener("change", render);
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
