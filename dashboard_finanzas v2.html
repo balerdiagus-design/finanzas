@@ -624,11 +624,49 @@
   .modal-msg.ok  { color: var(--green); }
   .modal-msg.err { color: var(--red); }
 
+  /* AUTH SCREEN */
+  .auth-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:2rem; text-align:center; padding:2rem; }
+  .auth-logo { font-family:var(--font-display); font-weight:300; font-size:3rem; letter-spacing:-0.02em; color:var(--text); }
+  .auth-logo span { color:var(--accent); }
+  .auth-card { background:var(--surface); border:0.5px solid var(--border2); border-radius:14px; padding:2rem 2.5rem; max-width:380px; width:100%; }
+  .auth-card h2 { font-family:var(--font-display); font-weight:300; font-size:1.3rem; margin-bottom:0.5rem; color:var(--text); }
+  .auth-card p { font-size:11px; color:var(--muted); margin-bottom:1.5rem; line-height:1.6; }
+  .btn-google { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:11px 20px; background:var(--accent); color:#0e0f11; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:500; cursor:pointer; letter-spacing:0.04em; transition:opacity 0.15s; }
+  .btn-google:hover { opacity:0.88; }
+  .auth-picker { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:1.5rem; padding:2rem; }
+  .auth-picker h2 { font-family:var(--font-display); font-weight:300; font-size:1.5rem; color:var(--text); text-align:center; }
+  .auth-picker p { font-size:11px; color:var(--muted); text-align:center; letter-spacing:0.06em; }
+  .auth-picker .sheet-list { width:100%; max-width:420px; }
+  .disconnect-btn { background:transparent; border:0.5px solid var(--border2); color:var(--muted); font-family:var(--font-mono); font-size:11px; padding:7px 14px; border-radius:6px; cursor:pointer; letter-spacing:0.06em; transition:all 0.15s; }
+  .disconnect-btn:hover { border-color:var(--red); color:var(--red); }
 
 </style>
 </head>
 <body>
-<div class="shell">
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-logo">Gastos<span>.</span></div>
+  <div class="auth-card">
+    <h2>Conectá tu planilla</h2>
+    <p>Iniciá sesión con Google para ver tu dashboard de finanzas personales.</p>
+    <button class="btn-google" id="btnLogin">
+      <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+      Continuar con Google
+    </button>
+  </div>
+</div>
+
+<!-- SHEET PICKER -->
+<div class="auth-picker" id="sheetPicker">
+  <h2>Elegí tu planilla</h2>
+  <p>Seleccioná el Google Sheet que contiene tus movimientos</p>
+  <div class="sheet-list" id="sheetList"><div class="sheet-loading">Buscando planillas...</div></div>
+  <button class="disconnect-btn" onclick="disconnect()" style="margin-top:1rem">← Volver</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="shell" id="dashboardScreen" style="display:none">
 
   <div class="top-bar">
     <div class="logo-area">
@@ -639,10 +677,11 @@
       <div class="export-btns">
         <button class="export-btn pdf" onclick="exportPDF()">↓ PDF</button>
         <button class="export-btn" onclick="exportExcel()">↓ Excel</button>
-        <button class="export-btn" onclick="window.open(getConfig('editUrl',SPREADSHEET_EDIT_URL),'_blank')" style="border-color:rgba(200,240,96,0.3);color:var(--accent)">+ Carga de Datos</button>
-        <button class="planilla-btn" onclick="openSheetPicker()">⇄ Planilla</button>
+        <button class="export-btn" onclick="window.open(SPREADSHEET_EDIT_URL,'_blank')" style="border-color:rgba(200,240,96,0.3);color:var(--accent)">+ Carga de Datos</button>
+        <button class="planilla-btn" onclick="changSheet()">⇄ Planilla</button>
+        <button class="disconnect-btn" onclick="disconnect()">✕ Salir</button>
       </div>
-<button class="refresh-btn" id="refreshBtn" onclick="loadData()">
+      <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
         <svg class="spinner" width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.22 2.22l1.41 1.41M8.36 8.36l1.42 1.42M2.22 9.78l1.41-1.41M8.36 3.64l1.42-1.42" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
         </svg>
@@ -728,24 +767,6 @@
 <button class="fab fab-edit" id="fabEdit" onclick="toggleEditMode()" title="Editar movimientos">✎</button>
 
 <!-- Sheet Picker Modal -->
-<div class="modal-overlay" id="sheetPickerModal">
-  <div class="modal" style="max-width:500px">
-    <div class="modal-top">
-      <span class="modal-title">Elegí tu planilla</span>
-      <button class="modal-close" onclick="closeSheetPicker()">×</button>
-    </div>
-    <div class="sheet-list" id="sheetList">
-      <div class="sheet-loading">Iniciando sesión con Google...</div>
-    </div>
-    <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border)">
-      <div class="form-label" style="margin-bottom:6px">O pegá la URL del Apps Script directamente</div>
-      <div style="display:flex;gap:6px">
-        <input class="form-input" id="manualUrl" type="text" placeholder="https://script.google.com/macros/s/...">
-        <button class="modal-submit" style="width:auto;padding:8px 14px;white-space:nowrap" onclick="saveManualUrl()">Usar</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Modal Settings -->
 <div class="modal-overlay" id="settingsModal">
@@ -774,6 +795,7 @@
     </div>
   </div>
 </div>
+</div><!-- /dashboardScreen -->
 
 <!-- Modal nuevo movimiento -->
 <div class="modal-overlay" id="addModal">
@@ -826,7 +848,104 @@
 // CONFIGURACIÓN OAUTH
 // ============================================================
 const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxl7nLEZFeYjx5q8uRt-3aUqauM-E2ghQ4VaavdhGxwARs9hMqJHDlAbUwSICP9rXE7pg/exec';
-const SPREADSHEET_EDIT_URL = 'https://docs.google.com/spreadsheets/d/13HfBkSLsZ4-jOx2Z2-LL1sJU1DzC5yA-18RyHY0g-d0/edit?gid=1883705848#gid=1883705848';
+
+// ── OAUTH ────────────────────────────────────────────────────────
+const CLIENT_ID = '956122534182-2j8vc1nn07oijg22r4n9e23h5gi1pp03.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly';
+let accessToken = null;
+let selectedSheetId = null;
+let selectedSheetName = '';
+let tokenClient = null;
+let SPREADSHEET_EDIT_URL = '#';
+
+function initAuth() {
+  const t = localStorage.getItem('finanzas_token');
+  const id = localStorage.getItem('finanzas_sheet_id');
+  if (t && id) {
+    accessToken = t; selectedSheetId = id;
+    selectedSheetName = localStorage.getItem('finanzas_sheet_name') || '';
+    SPREADSHEET_EDIT_URL = localStorage.getItem('finanzas_edit_url') || '#';
+    showDashboard(); return;
+  }
+  setupGoogleAuth();
+}
+
+function setupGoogleAuth() {
+  const go = () => {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: SCOPES,
+      callback: (r) => {
+        if (r.error) { console.error(r.error); return; }
+        accessToken = r.access_token;
+        localStorage.setItem('finanzas_token', accessToken);
+        showAuthPicker();
+      }
+    });
+    document.getElementById('btnLogin').onclick = () => tokenClient.requestAccessToken({ prompt: 'consent' });
+  };
+  if (window.google?.accounts) go();
+  else { const s = document.querySelector('script[src*="gsi"]'); if (s) s.addEventListener('load', go); }
+}
+
+function disconnect() {
+  if (accessToken && window.google) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null; selectedSheetId = null;
+  ['finanzas_token','finanzas_sheet_id','finanzas_sheet_name','finanzas_edit_url'].forEach(k => localStorage.removeItem(k));
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('sheetPicker').style.display = 'none';
+  document.getElementById('dashboardScreen').style.display = 'none';
+  setTimeout(setupGoogleAuth, 200);
+}
+
+function changSheet() {
+  selectedSheetId = null;
+  ['finanzas_sheet_id','finanzas_sheet_name','finanzas_edit_url'].forEach(k => localStorage.removeItem(k));
+  document.getElementById('dashboardScreen').style.display = 'none';
+  showAuthPicker();
+}
+
+async function showAuthPicker() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('dashboardScreen').style.display = 'none';
+  document.getElementById('sheetPicker').style.display = 'flex';
+  document.getElementById('sheetList').innerHTML = '<div class="sheet-loading">Buscando planillas...</div>';
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/drive/v3/files?q=mimeType%3D%22application%2Fvnd.google-apps.spreadsheet%22&orderBy=modifiedTime%20desc&pageSize=20&fields=files(id,name,modifiedTime)',
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const files = data.files || [];
+    if (!files.length) { document.getElementById('sheetList').innerHTML = '<div class="sheet-loading">No se encontraron planillas.</div>'; return; }
+    document.getElementById('sheetList').innerHTML = files.map(f => {
+      const mod = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('es-AR') : '';
+      return `<div class="sheet-item" onclick="selectSheet('${f.id}','${f.name.replace(/'/g,"\\'")}')">
+        <div class="sheet-icon">📊</div>
+        <div><div class="sheet-name">${f.name}</div>${mod?`<div class="sheet-mod">Modificado ${mod}</div>`:''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('sheetList').innerHTML = `<div class="sheet-loading" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function selectSheet(id, name) {
+  selectedSheetId = id; selectedSheetName = name;
+  SPREADSHEET_EDIT_URL = `https://docs.google.com/spreadsheets/d/${id}/edit`;
+  localStorage.setItem('finanzas_sheet_id', id);
+  localStorage.setItem('finanzas_sheet_name', name);
+  localStorage.setItem('finanzas_edit_url', SPREADSHEET_EDIT_URL);
+  showDashboard();
+}
+
+function showDashboard() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('sheetPicker').style.display = 'none';
+  document.getElementById('dashboardScreen').style.display = 'block';
+  loadData();
+}
+// ────────────────────────────────────────────────────────────────
 
 function getConfig(key, fallback) { return localStorage.getItem('cfg_'+key) || fallback; }
 function setConfig(key, val) { localStorage.setItem('cfg_'+key, val); }
@@ -940,22 +1059,64 @@ function parseCSV(text) {
   return rows.filter(r => r.mes && r.mes.length === 7);
 }
 
-async function fetchCSV() {
-  const urls = [
-    SCRIPT_URL + '?t=' + Date.now(),
-    'https://corsproxy.io/?url=' + encodeURIComponent(SCRIPT_URL) + '&t=' + Date.now()
-  ];
-  let lastErr;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const text = await res.text();
-      if (text.trimStart().startsWith('<') && !text.includes(',')) throw new Error('Respuesta inesperada del servidor');
-      return text;
-    } catch(e) { lastErr = e; }
+async function fetchSheetData() {
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}?fields=sheets.properties`,
+    { headers: { Authorization: 'Bearer ' + accessToken } }
+  );
+  if (!metaRes.ok) {
+    if (metaRes.status === 401) { localStorage.removeItem('finanzas_token'); setTimeout(disconnect, 1000); }
+    throw new Error('Error ' + metaRes.status + ' al acceder a la planilla');
   }
-  throw lastErr;
+  const meta = await metaRes.json();
+  const sheetNames = meta.sheets.map(s => s.properties.title);
+  const movSheet = sheetNames.find(n => n.toLowerCase().includes('movimiento')) || sheetNames[0];
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent(movSheet)}`,
+    { headers: { Authorization: 'Bearer ' + accessToken } }
+  );
+  if (!dataRes.ok) throw new Error('Error ' + dataRes.status + ' al leer los datos');
+  return (await dataRes.json()).values || [];
+}
+
+function parseSheetValues(values) {
+  if (!values || values.length < 2) return [];
+  const headers = values[0].map(h => String(h).trim());
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const cols = values[i];
+    if (!cols?.length) continue;
+    const obj = {};
+    headers.forEach((h, idx) => obj[h] = cols[idx] !== undefined ? String(cols[idx]).trim() : '');
+    const monto = parseNum(obj['Monto'] || '');
+    if (!monto || isNaN(monto)) continue;
+    let fecha = obj['Marca temporal'] || '';
+    if (fecha.includes('/')) {
+      const parts = fecha.split(' ')[0].split('/');
+      if (parts.length === 3) {
+        let [a, b, y] = parts;
+        const [d, m] = parseInt(a) > 12 ? [a, b] : [a, b];
+        fecha = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+      }
+    } else if (/^\d{5}/.test(fecha)) {
+      const d = new Date((parseFloat(fecha) - 25569) * 86400 * 1000);
+      fecha = d.toISOString().slice(0, 10);
+    } else if (fecha.includes('-')) { fecha = fecha.split(' ')[0]; }
+    if (!fecha || fecha.length < 7) continue;
+    const montoFinal = obj['Monto final'] ? parseNum(obj['Monto final']) : -monto;
+    const mes = fecha.slice(0, 7);
+    rows.push({
+      fecha, mes,
+      marcaOrig: obj['Marca temporal'] || '',
+      descripcion: obj['Descripción'] || obj['Descripcion'] || '',
+      categoria: obj['Categoria'] || obj['Categoría'] || 'Otros',
+      monto,
+      observaciones: obj['Observaciones'] || obj['Observaciones '] || '',
+      tipo: obj['Tipo'] || '',
+      montoFinal: isNaN(montoFinal) ? -monto : montoFinal
+    });
+  }
+  return rows.filter(r => r.mes?.length === 7);
 }
 
 async function loadData() {
@@ -965,18 +1126,15 @@ async function loadData() {
   btn.classList.add('loading');
   dot.className = 'status-dot';
   statusText.textContent = 'Actualizando...';
-
   try {
-    const text = await fetchCSV();
-    allData = parseCSV(text);
-    if (allData.length === 0) throw new Error('Sin datos');
-
+    const values = await fetchSheetData();
+    allData = parseSheetValues(values);
+    if (allData.length === 0) throw new Error('Sin datos en la planilla');
     const months = [...new Set(allData.map(r => r.mes))].sort();
     if (!selMes || !months.includes(selMes)) selMes = months[months.length - 1];
-
     dot.className = 'status-dot';
     const now = new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
-    statusText.textContent = `${allData.length} movimientos · Actualizado ${now}`;
+    statusText.textContent = `${allData.length} movimientos · ${selectedSheetName} · Actualizado ${now}`;
     renderAll(months);
   } catch(e) {
     dot.className = 'status-dot error';
@@ -1389,80 +1547,6 @@ function renderTxns() {
   });
 }
 
-// ── SHEET PICKER (OAuth) ─────────────────────────────────────────
-const CLIENT_ID = '956122534182-2j8vc1nn07oijg22r4n9e23h5gi1pp03.apps.googleusercontent.com';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
-let gisToken = null;
-let gisClient = null;
-
-function openSheetPicker() {
-  document.getElementById('sheetPickerModal').classList.add('open');
-  document.getElementById('sheetList').innerHTML = '<div class="sheet-loading">Conectando con Google...</div>';
-  initGIS();
-}
-function closeSheetPicker() { document.getElementById('sheetPickerModal').classList.remove('open'); }
-document.getElementById('sheetPickerModal').addEventListener('click', function(e){ if(e.target===this) closeSheetPicker(); });
-
-function initGIS() {
-  const go = () => {
-    gisClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: DRIVE_SCOPE,
-      callback: async (resp) => {
-        if (resp.error) {
-          document.getElementById('sheetList').innerHTML = `<div class="sheet-loading" style="color:var(--red)">Error OAuth: ${resp.error}<br><small style="color:var(--muted)">Si usás el archivo local (file://) debés agregar "null" a los orígenes autorizados en Google Cloud Console.</small></div>`;
-          return;
-        }
-        gisToken = resp.access_token;
-        await loadSheetList();
-      }
-    });
-    gisClient.requestAccessToken({ prompt: '' });
-  };
-  if (window.google?.accounts) go();
-  else {
-    const s = document.querySelector('script[src*="gsi"]');
-    if (s) s.addEventListener('load', go);
-    else document.getElementById('sheetList').innerHTML = '<div class="sheet-loading" style="color:var(--red)">No se pudo cargar Google Identity Services.</div>';
-  }
-}
-
-async function loadSheetList() {
-  document.getElementById('sheetList').innerHTML = '<div class="sheet-loading">Buscando planillas...</div>';
-  try {
-    const res = await fetch(
-      'https://www.googleapis.com/drive/v3/files?q=mimeType%3D%22application%2Fvnd.google-apps.spreadsheet%22&orderBy=modifiedTime+desc&pageSize=20&fields=files(id,name,modifiedTime)',
-      { headers: { Authorization: 'Bearer ' + gisToken } }
-    );
-    const data = await res.json();
-    const files = data.files || [];
-    if (!files.length) { document.getElementById('sheetList').innerHTML = '<div class="sheet-loading">No se encontraron planillas.</div>'; return; }
-    document.getElementById('sheetList').innerHTML = files.map(f => {
-      const mod = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('es-AR') : '';
-      return `<div class="sheet-item" onclick="selectSheet('${f.id}','${f.name.replace(/'/g,"\\'")}')">
-        <div class="sheet-icon">📊</div>
-        <div><div class="sheet-name">${f.name}</div>${mod?`<div class="sheet-mod">Modificado ${mod}</div>`:''}</div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    document.getElementById('sheetList').innerHTML = `<div class="sheet-loading" style="color:var(--red)">Error: ${e.message}</div>`;
-  }
-}
-
-function selectSheet(id, name) {
-  const editUrl = `https://docs.google.com/spreadsheets/d/${id}/edit`;
-  setConfig('editUrl', editUrl);
-  closeSheetPicker();
-  alert(`Planilla seleccionada: "${name}"\n\nRecordá que el Apps Script debe estar configurado para esta planilla. Si es diferente, actualizalo en ⚙.`);
-}
-
-function saveManualUrl() {
-  const url = document.getElementById('manualUrl').value.trim();
-  if (!url) return;
-  setConfig('scriptUrl', url);
-  closeSheetPicker();
-  location.reload();
-}
 
 // ── EDIT MODE FAB ────────────────────────────────────────────────
 let editModeActive = false;
@@ -1722,7 +1806,7 @@ function exportExcel() {
   XLSX.writeFile(wb, `finanzas_${selMes}.xlsx`);
 }
 
-loadData();
+initAuth();
 </script>
 </body>
 </html>
