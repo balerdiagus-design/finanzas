@@ -523,6 +523,7 @@
 
   /* FAB */
   .fab {
+    display: none; /* solo visible en dashboard */
     position: fixed;
     bottom: 2rem;
     right: 2rem;
@@ -544,6 +545,7 @@
     font-family: var(--font-mono);
   }
   .fab:hover { transform: scale(1.08); box-shadow: 0 6px 32px rgba(200,240,96,0.5); }
+  body.dashboard-active .fab { display: flex; }
 
   /* MODAL */
   .modal-overlay {
@@ -891,6 +893,7 @@ function disconnect() {
   if (accessToken && window.google) google.accounts.oauth2.revoke(accessToken);
   accessToken = null; selectedSheetId = null;
   ['finanzas_token','finanzas_sheet_id','finanzas_sheet_name','finanzas_edit_url'].forEach(k => localStorage.removeItem(k));
+  document.body.classList.remove('dashboard-active');
   document.getElementById('authScreen').style.display = 'flex';
   document.getElementById('sheetPicker').style.display = 'none';
   document.getElementById('dashboardScreen').style.display = 'none';
@@ -943,6 +946,7 @@ function showDashboard() {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('sheetPicker').style.display = 'none';
   document.getElementById('dashboardScreen').style.display = 'block';
+  document.body.classList.add('dashboard-active');
   loadData();
 }
 // ────────────────────────────────────────────────────────────────
@@ -1095,7 +1099,7 @@ function parseSheetValues(values) {
       const parts = fecha.split(' ')[0].split('/');
       if (parts.length === 3) {
         let [a, b, y] = parts;
-        const [d, m] = parseInt(a) > 12 ? [a, b] : [a, b];
+        const [d, m] = parseInt(a) > 12 ? [a, b] : parseInt(b) > 12 ? [b, a] : [a, b];
         fecha = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
       }
     } else if (/^\d{5}/.test(fecha)) {
