@@ -1714,15 +1714,12 @@ async function submitMovimiento(e) {
   const pad = n => String(n).padStart(2, '0');
   const marca = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-  // Formato argentino: 300000 → "$300.000" / -300000 → "-$300.000"
-  const fmtARS = n => (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
   const params = new URLSearchParams({
     action: editMode ? 'update' : 'add',
     marca: editMode ? editMarcaOrig : marca,
     descripcion: document.getElementById('fDesc').value,
     categoria:   document.getElementById('fCat').value,
-    monto:      fmtARS(monto),
+    monto:       Math.round(monto),   // número puro, la columna aplica el formato
     tipo:        document.getElementById('fTipoGasto').value,
     observaciones: document.getElementById('fObs').value
   });
