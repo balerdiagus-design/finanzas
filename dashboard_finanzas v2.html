@@ -1535,7 +1535,7 @@ function renderTxns() {
       <td class="txn-amount ${r.montoFinal >= 0 ? 'pos' : 'neg'}">${r.montoFinal >= 0 ? '+' : '-'}${fmt(r.monto)}</td>
       <td><div class="row-actions" id="act_${rid}">
         <button class="row-act-btn" onclick="openEditModal(txnRows[${idx}])">✎</button>
-        <button class="row-act-btn del" onclick="showDelConfirm('${rid}',txnRows[${idx}].marcaOrig)">✕</button>
+        <button class="row-act-btn del" onclick="showDelConfirm('${rid}',${idx})">✕</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -1615,22 +1615,28 @@ function deleteCustomCat(name) {
 let editMode = false;
 let editMarcaOrig = '';
 
-function showDelConfirm(rid, marcaOrig) {
+function showDelConfirm(rid, idx) {
   const el = document.getElementById('act_' + rid);
   el.innerHTML = `<div class="del-confirm">
     <span>¿Eliminar?</span>
-    <button class="del-yes" onclick="doDelete('${rid}','${marcaOrig.replace(/'/g,"\\'")}')">Sí</button>
+    <button class="del-yes" onclick="doDelete('${rid}',${idx})">Sí</button>
     <button class="del-no"  onclick="renderTxns()">No</button>
   </div>`;
 }
 
-async function doDelete(rid, marcaOrig) {
+async function doDelete(rid, idx) {
   const btn = document.querySelector(`#act_${rid} .del-yes`);
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const row = window.txnRows[idx];
   try {
-    const params = new URLSearchParams({ action: 'delete', marca: marcaOrig });
+    const params = new URLSearchParams({
+      action: 'delete',
+      marca: row.marcaOrig,
+      descripcion: row.descripcion,
+      categoria: row.categoria
+    });
     await fetch(getConfig('scriptUrl', SCRIPT_URL_DEFAULT) + '?' + params.toString());
-    setTimeout(loadData, 800);
+    setTimeout(loadData, 1200);
   } catch(e) {
     alert('Error al eliminar: ' + e.message);
     renderTxns();
@@ -1696,6 +1702,13 @@ async function submitMovimiento(e) {
   msg.className = 'modal-msg';
 
   const monto = parseFloat(document.getElementById('fMonto').value);
+  if (!monto || isNaN(monto) || monto <= 0) {
+    msg.className = 'modal-msg err';
+    msg.textContent = 'Ingresá un monto válido mayor a 0';
+    btn.disabled = false;
+    btn.textContent = editMode ? 'Guardar cambios' : 'Guardar movimiento';
+    return;
+  }
   const montoFinal = movSigno === 'gasto' ? -monto : monto;
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
